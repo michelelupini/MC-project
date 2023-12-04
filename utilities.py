@@ -34,12 +34,15 @@ def generate_data_s_ones(m, d, s):
     theta_true = np.array(theta_true)
     y = X @ theta_true + np.random.normal(0, 1, m)
 
-    theta_random = np.random.randint(2, size=d)
+    theta_random = [0] * int(d - s) + [1] * int(s)
+    random.shuffle(theta_random) # initialize theta randomly with 0 and 1s
+    theta_random = np.array(theta_random)
+
 
     return X, y, theta_true, theta_random
 
 
-def get_sampling_losses_fixed_ones(iterations, beta, m, d, simulation_annealing = False):
+def get_sampling_losses(iterations, beta, m, d, simulation_annealing = False):
 
     losses = []
     X, y, theta_true, theta = generate_data(m, d)
@@ -69,14 +72,12 @@ def get_sampling_losses_fixed_ones(iterations, beta, m, d, simulation_annealing 
     return losses
 
 
+
+
 def get_sampling_losses_fixed_ones(iterations, beta, m, d, s):
 
-    X, y, theta_true = generate_data(m, d, s)
+    X, y, theta_true, theta = generate_data_s_ones(m, d, s)
     losses = []
-
-    theta = [0] * int(d - s) + [1] * int(s)
-    random.shuffle(theta) # initialize theta randomly with 0 and 1s
-    theta = np.array(theta)
 
     for _ in range(iterations): 
         
