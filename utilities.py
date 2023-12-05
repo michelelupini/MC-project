@@ -5,7 +5,7 @@ from scipy.stats import norm
 from utilities import *
 import matplotlib.pyplot as plt
 
-def mse(X, y, theta): 
+def noise(X, y, theta): 
     return ((y - X @ theta) ** 2).sum()
 
 def generate_data(m, d): 
@@ -44,9 +44,8 @@ def generate_data_s_ones(m, d, s):
 
 def get_sampling_losses(iterations, beta, m, d, simulation_annealing = False):
 
-    losses = []
+    errors = []
     X, y, theta_true, theta = generate_data(m, d)
-    theta = np.random.randint(2, size=d) # initialize theta randomly with 0 and 1s
     
     change_beta_every = math.floor(iterations/20)
 
@@ -55,7 +54,7 @@ def get_sampling_losses(iterations, beta, m, d, simulation_annealing = False):
         theta1 = theta.copy()
         theta1[pos] = not theta[pos]  # get new theta with only one digit changed
 
-        comp = np.exp(-beta * (mse(X, y, theta1) - mse(X, y, theta)))
+        comp = np.exp(-beta * (noise(X, y, theta1) - noise(X, y, theta)))
         acceptance = min(1, comp)
 
         # change state with acceptance probability
@@ -66,10 +65,10 @@ def get_sampling_losses(iterations, beta, m, d, simulation_annealing = False):
             beta *= 1.2
         
         # compute loss
-        mse_val = ((theta-theta_true)**2).mean()*(2/d)
-        losses.append(mse_val)
+        mse_val = ((theta-theta_true)**2).sum()*(2/d)
+        errors.append(mse_val)
 
-    return losses
+    return errors
 
 
 
@@ -77,7 +76,7 @@ def get_sampling_losses(iterations, beta, m, d, simulation_annealing = False):
 def get_sampling_losses_fixed_ones(iterations, beta, m, d, s):
 
     X, y, theta_true, theta = generate_data_s_ones(m, d, s)
-    losses = []
+    errors = []
 
     for _ in range(iterations): 
         
@@ -92,7 +91,7 @@ def get_sampling_losses_fixed_ones(iterations, beta, m, d, s):
         theta1[pos_zero] = 1
         theta1[pos_one] = 0
 
-        comp = np.exp(-beta * (mse(X, y, theta1) - mse(X, y, theta)))
+        comp = np.exp(-beta * (noise(X, y, theta1) - noise(X, y, theta)))
         acceptance = min(1, comp)
 
         # change state with acceptance probability
@@ -100,7 +99,7 @@ def get_sampling_losses_fixed_ones(iterations, beta, m, d, s):
             theta = theta1
 
         # compute loss
-        mse_val = ((theta-theta_true)**2).mean()*(1/(2*s))
-        losses.append(mse_val)
+        mse_val = ((theta-theta_true)**2).sum()*(1/(2*s))
+        errors.append(mse_val)
 
-    return losses
+    return errors
