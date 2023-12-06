@@ -5,7 +5,29 @@ from scipy.stats import norm
 from utilities import *
 import matplotlib.pyplot as plt
 
+class NoiseComputer: 
+    def __init__(self, X, y, theta): 
+        self.X = X
+        self.y = y
+        self.theta = theta
+        self.residual = y - X @ theta
+    
+    def compute_noise(self, new_theta): 
+
+        # element that became 0 will have -1 the one that became one will have +1 
+        difference = new_theta - self.theta  
+        indices = np.nonzero(difference)
+
+        column0 = self.X[:, indices[0]]  * self.difference[indices[0]]
+        column1 = self.X[:, indices[1]]  * self.difference[indices[1]]
+
+        self.residual += self.y + column0 + column1
+        return ((self.residual) ** 2).mean()
+
+    
+
 def noise(X, y, theta): 
+    # take the mean so the loss is indipendent from m
     return ((y - X @ theta) ** 2).mean()
 
 def generate_data(m, d): 
@@ -65,13 +87,22 @@ def log_likelihood(X, y, theta):
     return -(np.log(alpha[ones_indices]).sum() + np.log(1 - alpha[min_one_indices]).sum())
 
 
+def run_multiple_experiments(repeat_n_times, get_samples, *args): 
+    list_errors = []
+    number_iterations = []
+
+    for i in range(repeat_n_times): 
+        errors = get_samples(*args)
+        list_errors.append(errors[-1])
+        number_iterations.append(len(errors))
+
+    return np.mean(list_errors), np.mean(number_iterations)
+
 
 def get_sampling_losses(iterations, beta, m, d):
 
-
-    errors = []
     X, y, theta_true, theta = generate_data(m, d)
-
+    errors = []
     for _ in range(iterations): 
         pos = np.random.randint(0, d) 
         theta1 = theta.copy()
@@ -93,6 +124,9 @@ def get_sampling_losses(iterations, beta, m, d):
             break
 
     return errors
+
+
+
 
 def get_simulation_annealing_losses(iterations, beta, m, d, change_beta_every, update_beta): 
 
