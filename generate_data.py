@@ -3,7 +3,6 @@ import time
 import math
 import random
 from scipy.stats import norm
-from utilities import *
 import matplotlib.pyplot as plt
 
 def generate_data(m, d): 
@@ -15,7 +14,7 @@ def generate_data(m, d):
     return X, y, theta_true, theta_random
 
 
-def generate_data_s_ones(m, d, s): 
+def generate_data_fixed_ones(m, d, s): 
     """Generate theta with s ones and d-s zeros
 
     Args:
@@ -51,3 +50,9 @@ def generate_data_sign(m, d, s):
     theta_random = np.array(theta_random)
 
     return X, y, theta_true, theta_random
+
+
+
+
+
+
