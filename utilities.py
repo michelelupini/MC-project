@@ -1,9 +1,12 @@
 import numpy as np
+import time
 import math
 import random
 from scipy.stats import norm
 from utilities import *
 import matplotlib.pyplot as plt
+
+
 
 class NoiseComputer: 
     def __init__(self, X, y, theta): 
@@ -13,22 +16,80 @@ class NoiseComputer:
         self.residual = y - X @ theta
     
     def compute_noise(self, new_theta): 
+        
+        if (self.theta == new_theta).all(): 
+            return self.residual, (self.residual**2).mean()
 
         # element that became 0 will have -1 the one that became one will have +1 
-        difference = new_theta - self.theta  
+        difference = self.theta - new_theta
         indices = np.nonzero(difference)
 
-        column0 = self.X[:, indices[0]]  * self.difference[indices[0]]
-        column1 = self.X[:, indices[1]]  * self.difference[indices[1]]
+        column0 = self.X[:, indices[0]]  * difference[indices[0]][0]
+        new_residual = self.residual + np.squeeze(column0) 
 
-        self.residual += self.y + column0 + column1
-        return ((self.residual) ** 2).mean()
-
+        return new_residual, (new_residual**2).mean()
     
+    def compute_noise_fixed_ones(self, new_theta): 
+        
+        if (self.theta == new_theta).all(): 
+            return self.residual, (self.residual**2).mean()
+
+        # element that became 0 will have -1 the one that became one will have +1 
+        difference =   self.theta  - new_theta
+        indices = np.nonzero(difference)[0]
+
+        column0 = self.X[:, indices[0]] * difference[indices[0]]
+        column1 = self.X[:, indices[1]] * difference[indices[1]]
+        new_residual = self.residual + np.squeeze(column0) +  np.squeeze(column1) 
+
+        return new_residual, (new_residual**2).mean()
+
+    def update_theta_residual(self, theta, residual): 
+        self.theta = theta
+        self.residual = residual
+
+
+class NoiseComputer1: 
+    def __init__(self, X, y, theta): 
+        self.X = X
+        self.y = y
+        self.theta = theta
+        self.residual = X @ theta
+
+        self.min_one_indices = np.where(y == -1)[0]
+        self.ones_indices = np.where(y == 1)[0]
+    
+    def compute_noise_fixed_ones(self, new_theta): 
+        
+        if (self.theta == new_theta).all(): 
+            return self.residual, self.loss(self.residual)
+
+        # element that became 0 will have -1 the one that became one will have +1 
+        difference =   self.theta  - new_theta
+        indices = np.nonzero(difference)[0]
+
+        column0 = self.X[:, indices[0]] * difference[indices[0]]
+        column1 = self.X[:, indices[1]] * difference[indices[1]]
+        new_residual = self.residual + np.squeeze(column0) +  np.squeeze(column1) 
+
+        return new_residual, self.loss(new_residual)
+
+    def loss(self, residual): 
+        #print('inputt', X @ theta)
+        alpha = norm.cdf((residual) / 1)
+        print('class alpha', residual[0])
+        #print('alpha', alpha)
+        return -(np.log(alpha[self.ones_indices]).sum() + np.log(1 - alpha[self.min_one_indices]).sum())
+        
+    def update_theta_residual(self, theta, residual): 
+        self.theta = theta
+        self.residual = residual
+
 
 def noise(X, y, theta): 
     # take the mean so the loss is indipendent from m
     return ((y - X @ theta) ** 2).mean()
+
 
 def generate_data(m, d): 
     X = np.random.normal(0, 1, (m, d))
@@ -83,6 +144,7 @@ def log_likelihood(X, y, theta):
     
     #print('inputt', X @ theta)
     alpha = norm.cdf((X @ theta) / 1)
+    print('log alpha', (X @ theta)[0])
     #print('alpha', alpha)
     return -(np.log(alpha[ones_indices]).sum() + np.log(1 - alpha[min_one_indices]).sum())
 
@@ -102,17 +164,23 @@ def run_multiple_experiments(repeat_n_times, get_samples, *args):
 def get_sampling_losses(iterations, beta, m, d):
 
     X, y, theta_true, theta = generate_data(m, d)
+    noise_comp = NoiseComputer(X, y, theta)
+
     errors = []
     for _ in range(iterations): 
         pos = np.random.randint(0, d) 
         theta1 = theta.copy()
         theta1[pos] = not theta[pos]  # get new theta with only one digit changed
 
-        comp = np.exp(-beta * (noise(X, y, theta1) - noise(X, y, theta)))
+        residual, old_noise = noise_comp.compute_noise(theta)
+        residual, new_noise = noise_comp.compute_noise(theta1) 
+
+        comp = np.exp(-beta * (new_noise - old_noise))
         acceptance = min(1, comp)
 
         # change state with acceptance probability
         if np.random.rand(1)[0] < acceptance : 
+            noise_comp.update_theta_residual(theta1, residual)
             theta = theta1
 
         # compute error
@@ -132,17 +200,23 @@ def get_simulation_annealing_losses(iterations, beta, m, d, change_beta_every, u
 
     errors = []
     X, y, theta_true, theta = generate_data(m, d)
+    noise_comp = NoiseComputer(X, y, theta)
     
     for _ in range(iterations): 
         pos = np.random.randint(0, d) 
         theta1 = theta.copy()
         theta1[pos] = not theta[pos]  # get new theta with only one digit changed
 
-        comp = np.exp(-beta * (noise(X, y, theta1) - noise(X, y, theta)))
+
+        residual, old_noise = noise_comp.compute_noise(theta)
+        residual, new_noise = noise_comp.compute_noise(theta1) 
+
+        comp = np.exp(-beta * (new_noise - old_noise))
         acceptance = min(1, comp)
 
         # change state with acceptance probability
         if np.random.rand(1)[0] < acceptance : 
+            noise_comp.update_theta_residual(theta1, residual)
             theta = theta1
         
         if iterations % change_beta_every == 0: 
@@ -163,6 +237,7 @@ def get_simulation_annealing_losses(iterations, beta, m, d, change_beta_every, u
 def get_sampling_losses_fixed_ones(iterations, beta, m, d, s):
 
     X, y, theta_true, theta = generate_data_s_ones(m, d, s)
+    noise_comp = NoiseComputer(X, y, theta)
     errors = []
 
     for _ in range(iterations): 
@@ -178,11 +253,15 @@ def get_sampling_losses_fixed_ones(iterations, beta, m, d, s):
         theta1[pos_zero] = 1
         theta1[pos_one] = 0
 
-        comp = np.exp(-beta * (noise(X, y, theta1) - noise(X, y, theta)))
+        residual, old_noise = noise_comp.compute_noise_fixed_ones(theta)
+        residual, new_noise = noise_comp.compute_noise_fixed_ones(theta1) 
+
+        comp = np.exp(-beta * (new_noise - old_noise))
         acceptance = min(1, comp)
 
         # change state with acceptance probability
         if np.random.rand(1)[0] < acceptance : 
+            noise_comp.update_theta_residual(theta1, residual)
             theta = theta1
 
         # compute error
@@ -199,6 +278,7 @@ def get_sampling_losses_fixed_ones(iterations, beta, m, d, s):
 def get_sampling_losses_sign(iterations, beta, m, d, s):
 
     X, y, theta_true, theta = generate_data_sign(m, d, s)
+    noise_comp = NoiseComputer1(X, y, theta)
     errors = []
 
     for _ in range(iterations): 
@@ -213,12 +293,25 @@ def get_sampling_losses_sign(iterations, beta, m, d, s):
         theta1[pos_zero] = 1
         theta1[pos_one] = 0
 
-        comp = np.exp(-beta * (log_likelihood(X, y, theta1) - log_likelihood(X, y, theta)))
+
+        residual, old_noise = noise_comp.compute_noise_fixed_ones(theta)
+        residual, new_noise = noise_comp.compute_noise_fixed_ones(theta1) 
+
+        comp = np.exp(-beta * (new_noise - old_noise))
         acceptance = min(1, comp)
 
         # change state with acceptance probability
         if np.random.rand(1)[0] < acceptance : 
+            noise_comp.update_theta_residual(theta1, residual)
             theta = theta1
+
+        # comp = np.exp(-beta * (log_likelihood(X, y, theta1) - log_likelihood(X, y, theta)))
+        # acceptance = min(1, comp)
+
+        # # change state with acceptance probability
+        # if np.random.rand(1)[0] < acceptance : 
+        #     theta = theta1
+
 
         # compute error
         mse_val = ((theta-theta_true)**2).sum()*(1/(2*s))
@@ -229,3 +322,37 @@ def get_sampling_losses_sign(iterations, beta, m, d, s):
             break
 
     return errors
+
+
+def test_trick(): 
+    m = 2000
+    d = 2000
+    s = d/100
+    beta = 2
+    iterations = 100*d
+    X, y, theta_true, theta = generate_data(m, d)
+    noise_comp = NoiseComputer(X, y, theta)
+
+    residual = noise_comp.residual
+
+    s = time.time()
+
+    for i in range(1000): 
+        pos = np.random.randint(0, d) 
+        theta1 = theta.copy()
+        if i % 3 == 0: 
+            theta1[pos] = not theta[pos]  # get new theta with only one digit changed
+
+        new_residual, square_sum  = noise_comp.compute_noise(theta1)
+        
+        if np.abs(noise(X, y, theta1) - square_sum) > 0.001: 
+            print(noise(X, y, theta1),  square_sum)
+            print('PROBLEM')
+            break
+        
+        if i % 3 == 0: 
+            theta = theta1
+            noise_comp.update_theta_residual(theta1, new_residual)
+
+        # print(theta.shape)
+    print(time.time() -s )
