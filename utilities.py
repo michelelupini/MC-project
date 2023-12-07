@@ -6,7 +6,9 @@ from scipy.stats import norm
 from utilities import *
 import matplotlib.pyplot as plt
 
-
+# TODO: merge all noises into one
+# compute residual() and compute noise(changes based on specific)
+# main with test if working
 
 class NoiseComputer: 
     def __init__(self, X, y, theta): 
@@ -91,51 +93,7 @@ def noise(X, y, theta):
     return ((y - X @ theta) ** 2).mean()
 
 
-def generate_data(m, d): 
-    X = np.random.normal(0, 1, (m, d))
-    theta_true = np.random.randint(2, size=d)
-    y = X @ theta_true + np.random.normal(0, 1, m)
-    theta_random = np.random.randint(2, size=d)
 
-    return X, y, theta_true, theta_random
-
-
-def generate_data_s_ones(m, d, s): 
-    """Generate theta with s ones and d-s zeros
-
-    Args:
-        m (int): number of samples
-        d (int): signal dimension
-        s (int): number of ones in signal
-
-    Returns:
-        _type_: _description_
-    """
-    X = np.random.normal(0, 1, (m, d))
-    theta_true = [0] * int(d - s) + [1] * int(s)
-    random.shuffle(theta_true)
-    theta_true = np.array(theta_true)
-    y = X @ theta_true + np.random.normal(0, 1, m)
-
-    theta_random = [0] * int(d - s) + [1] * int(s)
-    random.shuffle(theta_random) # initialize theta randomly with 0 and 1s
-    theta_random = np.array(theta_random)
-
-
-    return X, y, theta_true, theta_random
-
-def generate_data_sign(m, d, s): 
-    X = np.random.normal(0, 1, (m, d))
-    theta_true = [0] * int(d - s) + [1] * int(s)
-    random.shuffle(theta_true)
-    theta_true = np.array(theta_true)
-    y = np.sign(X @ theta_true + np.random.normal(0, 1, m))
-
-    theta_random = [0] * int(d - s) + [1] * int(s)
-    random.shuffle(theta_random) # initialize theta randomly with 0 and 1s
-    theta_random = np.array(theta_random)
-
-    return X, y, theta_true, theta_random
 
 def log_likelihood(X, y, theta): 
     
@@ -160,6 +118,8 @@ def run_multiple_experiments(repeat_n_times, get_samples, *args):
 
     return np.mean(list_errors), np.mean(number_iterations)
 
+
+# class run experiment
 
 def get_sampling_losses(iterations, beta, m, d):
 
@@ -297,6 +257,11 @@ def get_sampling_losses_sign(iterations, beta, m, d, s):
         residual, old_noise = noise_comp.compute_noise_fixed_ones(theta)
         residual, new_noise = noise_comp.compute_noise_fixed_ones(theta1) 
 
+        # print(log_likelihood(X, y, theta), old_noise)
+        # print(log_likelihood(X, y, theta1), new_noise)
+
+
+
         comp = np.exp(-beta * (new_noise - old_noise))
         acceptance = min(1, comp)
 
@@ -304,14 +269,6 @@ def get_sampling_losses_sign(iterations, beta, m, d, s):
         if np.random.rand(1)[0] < acceptance : 
             noise_comp.update_theta_residual(theta1, residual)
             theta = theta1
-
-        # comp = np.exp(-beta * (log_likelihood(X, y, theta1) - log_likelihood(X, y, theta)))
-        # acceptance = min(1, comp)
-
-        # # change state with acceptance probability
-        # if np.random.rand(1)[0] < acceptance : 
-        #     theta = theta1
-
 
         # compute error
         mse_val = ((theta-theta_true)**2).sum()*(1/(2*s))
