@@ -92,7 +92,7 @@ class RunExperiment:
                 theta = theta1.copy()
             
             if change_beta_every and iterations % change_beta_every == 0: 
-                beta = update_beta(beta)
+                self.beta = update_beta(self.beta)
             
             # compute error
             mse_val = self.compute_mse(theta)
@@ -104,6 +104,18 @@ class RunExperiment:
 
         return errors
 
+
+def run_multiple_experiments(repeat_n_times, beta, m, d, s, fixed_ones=False, sign=False, **args): 
+    list_errors = []
+    steps_to_converge = []
+
+    for i in range(repeat_n_times): 
+        run_exp = RunExperiment(beta, m, d, s, fixed_ones, sign)
+        errors = run_exp.get_sampling_losses(**args)
+        list_errors.append(errors[-1])
+        steps_to_converge.append(len(errors))
+
+    return np.mean(list_errors), np.mean(steps_to_converge)
 
 
 
@@ -288,13 +300,3 @@ def get_sampling_losses_sign(iterations, beta, m, d, s):
 
     return errors
 
-def run_multiple_experiments(repeat_n_times, get_samples, *args): 
-    list_errors = []
-    number_iterations = []
-
-    for i in range(repeat_n_times): 
-        errors = get_samples(*args)
-        list_errors.append(errors[-1])
-        number_iterations.append(len(errors))
-
-    return np.mean(list_errors), np.mean(number_iterations)

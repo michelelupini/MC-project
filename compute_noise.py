@@ -120,7 +120,7 @@ if __name__ == '__main__':
     X, y, theta_true, theta = generate_data(m, d)
     noise_comp = NoiseComputer(X, y, theta)
 
-    for i in range(100): 
+    for i in range(1000): 
         theta1 = change_theta(theta, d)
         
         residual, old_noise = noise_comp.compute_noise(theta)
@@ -137,12 +137,11 @@ if __name__ == '__main__':
     X, y, theta_true, theta = generate_data_fixed_ones(m, d, s)
     noise_comp = NoiseComputer(X, y, theta)
 
-    for i in range(100): 
+    for i in range(1000): 
         theta1 = change_theta_fixed_ones(theta)
         
         residual, old_noise = noise_comp.compute_noise_fixed_ones(theta)
         residual, new_noise = noise_comp.compute_noise_fixed_ones(theta1) 
-        
 
         assert round(noise(X, y, theta), 5) == round(old_noise, 5)
         assert round(noise(X, y, theta1), 5) == round(new_noise, 5)
@@ -160,11 +159,11 @@ if __name__ == '__main__':
     X, y, theta_true, theta = generate_data_sign(m3, d3, s3)
     noise_comp = NoiseComputer(X, y, theta, sign=True)
 
-    for i in range(100): 
+    for i in range(1000): 
         theta1 = change_theta_fixed_ones(theta)
 
         residual, old_noise = noise_comp.compute_noise_fixed_ones_sign(theta)
-        residual, new_noise = noise_comp.compute_noise_fixed_ones_sign(theta1) 
+        residual, new_noise = noise_comp.compute_noise_fixed_ones_sign(theta1)
 
         # print(round(log_likelihood(X, y, theta), 5), round(old_noise, 5))
         # print(round(log_likelihood(X, y, theta1), 5), round(new_noise, 5))
