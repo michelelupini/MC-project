@@ -1,3 +1,4 @@
+import concurrent.futures
 import numpy as np
 import time
 import math
@@ -5,6 +6,8 @@ import random
 from scipy.stats import norm
 from compute_noise import *
 import matplotlib.pyplot as plt
+import math
+from concurrent.futures import ProcessPoolExecutor
 from generate_data import * 
 
 class RunExperiment: 
@@ -92,7 +95,7 @@ class RunExperiment:
                 theta = theta1.copy()
             
             if change_beta_every and iterations % change_beta_every == 0: 
-                self.beta = update_beta(self.beta)
+                self.beta = self.beta *  update_beta 
             
             # compute error
             mse_val = self.compute_mse(theta)
@@ -115,188 +118,73 @@ def run_multiple_experiments(repeat_n_times, beta, m, d, s, fixed_ones=False, si
         list_errors.append(errors[-1])
         steps_to_converge.append(len(errors))
 
-    return list_errors, np.mean(steps_to_converge)
+    return beta, np.mean(list_errors), np.mean(steps_to_converge)
+
+
+
+
+def run_multiple_multi_proc(repeat_n_times, betas, m, d, s, fixed_ones=False, sign=False, **args): 
+    best_beta = 0
+    best_loss = math.inf
+    best_iterations = math.inf
+
+    with ProcessPoolExecutor() as executor:
+        futures = []
+        for beta in betas: 
+            futures.append(executor.submit(run_multiple_experiments, repeat_n_times, beta, m, d, s, fixed_ones=fixed_ones, sign=sign, **args))
+
+        for future in concurrent.futures.as_completed(futures):
+            beta, loss, n_iterations = future.result()
+
+            if loss <= best_loss and n_iterations <= best_iterations:
+                best_beta = beta
+                best_loss = loss
+                best_iterations = n_iterations
+
+            print('beta=', beta, 'n_iterations=', n_iterations, 'loss', loss)
+
+    print('Best result: beta=', best_beta, 'n_iterations=', best_iterations, 'loss', best_loss)
+
+
+
+def run_multiple_multi_proc_sim_annealing(repeat_n_times, betas, m, d, s, mul_increases, increase_everys, fixed_ones=False, sign=False, iterations = 0): 
+
+
+    best_beta = 0
+    best_loss = math.inf
+    best_iterations = math.inf
+
+    with ProcessPoolExecutor() as executor:
+        futures = []
+        for beta in betas: 
+            for mul_inc in mul_increases: 
+                for increase_every in increase_everys: 
+                    futures.append(executor.submit(run_multiple_experiments, repeat_n_times, beta, m, d, s, fixed_ones=fixed_ones, 
+                                                   sign=sign, change_beta_every= increase_every, update_beta=mul_inc, iterations=iterations))
+
+        for future in concurrent.futures.as_completed(futures):
+            beta, loss, n_iterations = future.result()
+
+            if loss <= best_loss and n_iterations <= best_iterations:
+                best_beta = beta
+                best_loss = loss
+                best_iterations = n_iterations
+
+            print('beta=', beta, 'n_iterations=', n_iterations, 'loss', loss)
+
+    print('Best result: beta=', best_beta, 'n_iterations=', best_iterations, 'loss', best_loss)
 
 
 
 
 
 
+def run_multiple_ms(repeat_n_times, beta, m_values, d, s, mul_increase, increase_every, fixed_ones=False, sign=False, iterations = 0):
+    with ProcessPoolExecutor() as executor:
+        futures = []
+        for m_value in m_values: 
+            futures.append(executor.submit(repeat_n_times, beta, m_value, d, s, mul_increase, increase_every, fixed_ones=fixed_ones, sign=sign, iterations = iterations))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-# class run experiment
-def get_sampling_losses(iterations, beta, m, d):
-
-    X, y, theta_true, theta = generate_data(m, d)
-    noise_comp = NoiseComputer(X, y, theta)
-
-    errors = []
-    for _ in range(iterations): 
-        pos = np.random.randint(0, d) 
-        theta1 = theta.copy()
-        theta1[pos] = not theta[pos]  # get new theta with only one digit changed
-
-        residual, old_noise = noise_comp.compute_noise(theta)
-        residual, new_noise = noise_comp.compute_noise(theta1) 
-
-        comp = np.exp(-beta * (new_noise - old_noise))
-        acceptance = min(1, comp)
-
-        # change state with acceptance probability
-        if np.random.rand(1)[0] < acceptance : 
-            noise_comp.update_theta_residual(theta1, residual)
-            theta = theta1
-
-        # compute error
-        mse_val = ((theta-theta_true)**2).sum()*(2/d)
-        errors.append(mse_val)
-
-        # early stopping
-        if mse_val == 0: 
-            break
-
-    return errors
-
-
-
-
-def get_simulation_annealing_losses(iterations, beta, m, d, change_beta_every, update_beta): 
-
-    errors = []
-    X, y, theta_true, theta = generate_data(m, d)
-    noise_comp = NoiseComputer(X, y, theta)
-    
-    for _ in range(iterations): 
-        pos = np.random.randint(0, d) 
-        theta1 = theta.copy()
-        theta1[pos] = not theta[pos]  # get new theta with only one digit changed
-
-
-        residual, old_noise = noise_comp.compute_noise(theta)
-        residual, new_noise = noise_comp.compute_noise(theta1) 
-
-        comp = np.exp(-beta * (new_noise - old_noise))
-        acceptance = min(1, comp)
-
-        # change state with acceptance probability
-        if np.random.rand(1)[0] < acceptance : 
-            noise_comp.update_theta_residual(theta1, residual)
-            theta = theta1
+        losses_with_different_m = [result[0] for result in futures]
         
-        if iterations % change_beta_every == 0: 
-            beta = update_beta(beta)
-        
-        # compute error
-        mse_val = ((theta-theta_true)**2).sum()*(2/d)
-        errors.append(mse_val)
-
-        # early stopping
-        if mse_val == 0: 
-            break
-
-    return errors
-
-
-
-def get_sampling_losses_fixed_ones(iterations, beta, m, d, s):
-
-    X, y, theta_true, theta = generate_data_fixed_ones(m, d, s)
-    noise_comp = NoiseComputer(X, y, theta)
-    errors = []
-
-    for _ in range(iterations): 
-        
-        theta1 = theta.copy()
-        
-        zeros_indices = np.where(theta == 0)[0]
-        ones_indices = np.where(theta == 1)[0]
-        pos_zero = np.random.choice(zeros_indices)
-        pos_one = np.random.choice(ones_indices)
-        
-        # switch position between one 1 and one 0
-        theta1[pos_zero] = 1
-        theta1[pos_one] = 0
-
-        residual, old_noise = noise_comp.compute_noise_fixed_ones(theta)
-        residual, new_noise = noise_comp.compute_noise_fixed_ones(theta1) 
-
-        comp = np.exp(-beta * (new_noise - old_noise))
-        acceptance = min(1, comp)
-
-        # change state with acceptance probability
-        if np.random.rand(1)[0] < acceptance : 
-            noise_comp.update_theta_residual(theta1, residual)
-            theta = theta1
-
-        # compute error
-        mse_val = ((theta-theta_true)**2).sum()*(1/(2*s))
-        errors.append(mse_val)
-
-        # early stopping
-        if mse_val == 0: 
-            break
-
-    return errors
-
-
-def get_sampling_losses_sign(iterations, beta, m, d, s):
-
-    X, y, theta_true, theta = generate_data_sign(m, d, s)
-    noise_comp = NoiseComputer1(X, y, theta)
-    errors = []
-
-    for _ in range(iterations): 
-        
-        theta1 = theta.copy()
-        
-        zeros_indices = np.where(theta == 0)[0]
-        ones_indices = np.where(theta == 1)[0]
-        pos_zero = np.random.choice(zeros_indices)
-        pos_one = np.random.choice(ones_indices)
-        
-        theta1[pos_zero] = 1
-        theta1[pos_one] = 0
-
-
-        residual, old_noise = noise_comp.compute_noise_fixed_ones(theta)
-        residual, new_noise = noise_comp.compute_noise_fixed_ones(theta1) 
-
-        # print(log_likelihood(X, y, theta), old_noise)
-        # print(log_likelihood(X, y, theta1), new_noise)
-
-
-
-        comp = np.exp(-beta * (new_noise - old_noise))
-        acceptance = min(1, comp)
-
-        # change state with acceptance probability
-        if np.random.rand(1)[0] < acceptance : 
-            noise_comp.update_theta_residual(theta1, residual)
-            theta = theta1
-
-        # compute error
-        mse_val = ((theta-theta_true)**2).sum()*(1/(2*s))
-        errors.append(mse_val)
-
-        # early stopping
-        if mse_val == 0: 
-            break
-
-    return errors
-
+    return losses_with_different_m
