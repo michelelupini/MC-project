@@ -115,7 +115,7 @@ def run_multiple_experiments(repeat_n_times, beta, m, d, s, fixed_ones=False, si
         list_errors.append(errors[-1])
         steps_to_converge.append(len(errors))
 
-    return np.mean(list_errors), np.mean(steps_to_converge)
+    return list_errors, np.mean(steps_to_converge)
 
 
 
