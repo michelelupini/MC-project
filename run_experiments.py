@@ -72,7 +72,7 @@ class RunExperiment:
         #print('inputt', X @ theta)
         alpha = norm.cdf((X @ theta) / 1)
         #print('alpha', alpha)
-        return -(np.log(alpha[ones_indices]).sum() + np.log(1 - alpha[min_one_indices]).sum())
+        return -(np.log(alpha[ones_indices]).mean() + np.log(1 - alpha[min_one_indices]).mean())
 
     
     def get_sampling_losses(self, iterations, change_beta_every = None, update_beta = None): 
@@ -102,8 +102,8 @@ class RunExperiment:
             errors.append(mse_val)
 
             # early stopping
-            if mse_val == 0: 
-                break
+            # if mse_val == 0: 
+            #     break
 
         return errors
 

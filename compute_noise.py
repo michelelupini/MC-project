@@ -3,7 +3,6 @@ import time
 import math
 import random
 from scipy.stats import norm
-from utilities import *
 import matplotlib.pyplot as plt
 from generate_data import * 
 
