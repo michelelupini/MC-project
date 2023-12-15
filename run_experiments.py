@@ -102,8 +102,8 @@ class RunExperiment:
             errors.append(mse_val)
 
             # early stopping
-            # if mse_val == 0: 
-            #     break
+            if mse_val == 0: 
+                break
 
         return errors
 
