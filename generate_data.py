@@ -2,6 +2,7 @@ import numpy as np
 import time
 import math
 import random
+import pandas as pd
 from scipy.stats import norm
 import matplotlib.pyplot as plt
 
@@ -53,6 +54,17 @@ def generate_data_sign(m, d, s):
 
 
 
+def generate_data_competition(): 
+    m = 128*128
+    ones = 75
+    twos = 75
 
+    y = np.getfromtxt('')
 
+    X = np.getfromtxt('')
 
+    theta_random = [0] * int(m - (ones + twos)) + [1] * int(ones) + [2] * int(twos)
+    random.shuffle(theta_random) # initialize theta randomly with 0 and 1s
+    theta_random = np.array(theta_random)
+
+    return X, y, theta_random

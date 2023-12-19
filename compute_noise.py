@@ -60,6 +60,12 @@ class NoiseComputer:
         self.theta = theta.copy()
         self.residual = residual
 
+
+    def compute_noise_competition(self, new_theta): 
+        residual = y - X @ new_theta
+        return residual, (residual**2).mean()
+    
+
     def loss(self, residual): 
         #print('inputt', X @ theta)
         alpha = norm.cdf((residual) / 1)

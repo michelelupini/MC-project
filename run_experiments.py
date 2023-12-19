@@ -12,7 +12,7 @@ from generate_data import *
 
 class RunExperiment: 
 
-    def __init__(self, beta, m, d, s, fixed_ones=False, sign=False) -> None:
+    def __init__(self, beta, m, d, s, fixed_ones=False, sign=False, competition = False) -> None:
         self.d = d
         self.m = m
         self.beta = beta
@@ -38,6 +38,15 @@ class RunExperiment:
             self.compute_noise = self.noise_comp.compute_noise
             self.compute_mse = lambda theta : ((theta-self.theta_true)**2).sum()*(2/d)
 
+        elif not competition : 
+            self.change_state = self.change_theta_competition
+            X, y, self.theta_true = generate_data_competition()
+            self.noise_comp = NoiseComputer(X, y, self.theta)
+            self.compute_noise = self.noise_comp.compute_noise_competition
+
+
+            # self.compute_mse = lambda theta : ((theta-self.theta_true)**2).sum()*(2/d)
+
         else: 
             raise Exception('Combination of fixed_ones and sign not supported')
 
@@ -62,6 +71,30 @@ class RunExperiment:
         new_theta[pos_one] = 0
 
         return new_theta
+
+
+    def change_theta_competition(self, theta): 
+
+        new_theta = theta.copy()
+        zero_indices = np.where(y == 0)[0]
+        not_zero_indices = np.where(y != 0)[0]
+
+        pos_zero = np.random.choice(zero_indices)
+        pos_non_zero = np.random.choice(not_zero_indices)
+
+        if np.random.rand(1)[0] < pos_zero / (pos_non_zero + pos_zero): 
+            if new_theta[pos_zero] == 1: 
+                new_theta[pos_zero] = 2
+            else: 
+                new_theta[pos_zero] = 1
+
+        else: 
+            temp = new_theta[pos_non_zero]
+            new_theta[pos_zero]  = temp
+            new_theta[pos_non_zero] = 0
+
+        return new_theta
+
     
 
     def log_likelihood(self, X, y, theta): 
@@ -98,8 +131,8 @@ class RunExperiment:
                 self.beta = self.beta *  update_beta 
             
             # compute error
-            mse_val = self.compute_mse(theta)
-            errors.append(mse_val)
+            # mse_val = self.compute_mse(theta)
+            # errors.append(mse_val)
 
             # early stopping
             if mse_val == 0: 
